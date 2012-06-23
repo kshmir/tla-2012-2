@@ -192,6 +192,73 @@ int check_terminals(grammar g) {
 	return flag && no_term;
 }
 
+int grammar_is_LL(grammar g) {
+
+	int reg = grammar_is_regular(g);
+	if (reg == LEFT || reg == NULL) {
+		return false;
+	}
+
+
+	map m = grammar_get_productions(g);
+	foreach(cstring, prod_key, map_keys(m)) {
+		if (cstring_len(prod_key) > 1)
+			return false;
+		foreach(cstring, prod_value, ((production)map_get(m, prod_key))->tokens)
+		{
+			if (cstring_len(prod_value) > 2) {
+				if (is_terminal_token(prod_value[0])) {
+					return false;
+				}
+				int i = 0;
+				for (i = 0; i < cstring_len(prod_value); ++i) {
+					if (is_non_terminal(prod_value[i]) && i > 0) {
+						return false;
+					}
+				}
+			}
+			return false;
+		}
+	}
+	return true;
+}
+
+/**
+ * Tells wether a grammar is regular or not, returns the level of regularity (left or right)
+ */
+int grammar_is_regular(grammar g) {
+	int right = true, left = true;
+	map m = grammar_get_productions(g);
+	foreach(cstring, prod_key, map_keys(m)) {
+		if (cstring_len(prod_key) > 1)
+			return false;
+		foreach(cstring, prod_value, ((production)map_get(m, prod_key))->tokens)
+		{
+			if (cstring_len(prod_value) > 2)
+				return false;
+			if (cstring_len(prod_value) == 2) {
+				if (is_non_terminal(g, prod_value[0]) && is_terminal_token(g, prod_value[1]))
+					right = false;
+				else if (is_non_terminal(g, prod_value[1]) && is_terminal_token(g, prod_value[0]))
+					left = false;
+				else if (is_terminal_token(g, prod_value[0])
+						&& is_terminal_token(g, prod_value[1])) {
+					return false;
+				}
+			}
+			if (!left && !right)
+				return false;
+		}
+	}
+	if (right)
+		return RIGHT;
+
+	if (left)
+		return LEFT;
+
+	return false;
+}
+
 int grammar_is_regular(grammar g) {
 	int right = true, left = true;
 	map m = grammar_get_productions(g);
@@ -879,3 +946,21 @@ automatha grammar_to_automatha(grammar g) {
 	return a;
 }
 
+
+
+
+cstring make_asdr(grammar g) {
+	if (grammar_is_LL(g)) {
+		cstring output_string = cstring_init(0);
+		// Calcular siguientes y primeros de g
+
+		// Armar matriz en base a los terminales y no terminales (Armar ADT)
+
+		// Armar funciones en base a la matriz. (Recorrerla)
+
+		// Devolver eso.
+	} else {
+		printf("La gramática recibida es inválida");
+		return NULL;
+	}
+}
