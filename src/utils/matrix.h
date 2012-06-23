@@ -12,6 +12,8 @@
 
 #include "../includes.h"
 
+typedef struct matrix * matrix;
+
 // Inits the matrix
 matrix matrix_init(int x, int y);
 // Adds the pointer to the matrix in the position x, y.

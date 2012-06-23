@@ -15,24 +15,23 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-
-// List node
-struct matrix {
+struct  matrix{
 	list data;
 	int Xsize;
 	int Ysize;
 };
 
+
 // Inits the matrix
 matrix matrix_init(int x, int y) {
 	matrix ret = (matrix) malloc(sizeof(struct matrix));
-	matrix->Xsize = x;
-	matrix->Ysize = y;
-	matrix->data = list_init();
+	ret->Xsize = x;
+	ret->Ysize = y;
+	ret->data = list_init();
 
 	for(int i=0;i<x;i++){
 
-		list_add(matrix->data,list_init());
+		list_add(ret->data,list_init());
 	}
 
 
@@ -46,7 +45,7 @@ int matrix_add(matrix m, void * obj,int x, int y) {
 		return -1;
 	}
 
-	if(x>m->Xsize || y>m-Ysize){
+	if(x>m->Xsize || y>m->Ysize){
 	return -1;
 	}
 
@@ -75,8 +74,8 @@ int matrix_remove(matrix m, int Xindex, int Yindex) {
 		return -1;
 	}
 
-	list l=list_get(m->data,x);
-	list_remove(l,y);
+	list l=list_get(m->data,Xindex);
+	list_remove(l,Yindex);
 
 	return 1;
 }
@@ -107,5 +106,4 @@ int matrix_Ysize(matrix m) {
 	int size = m->Ysize;
 	return size;
 }
-
 
