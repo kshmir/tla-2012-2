@@ -17,6 +17,8 @@ typedef char * cstring;
 
 cstring cstring_copy(cstring s);
 
+cstring cstring_from_char(char c);
+
 cstring cstring_join_list(list strings, cstring s);
 
 cstring cstring_copy_len(cstring from, int len);

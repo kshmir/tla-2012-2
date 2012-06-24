@@ -28,31 +28,10 @@ void tp_run(int mode) {
 	automatha a;
 	switch (mode) {
 	case GRAMMAR:
-		grammar_print_info(_g);
-
-		a = grammar_to_automatha(_g);
-
-		if (a == NULL) {
-			printf("No se pudo convertir a gramatica");
-			return;
-		}
-
-		automatha_print(a, dotfile);
-
-		fflush(dotfile);
-		fclose(dotfile);
-
-		system("dot -Tpng .tmp > salida.png");
-
+//		grammar_print_info(_g);
+		grammar_make_asdr(_g);
 		break;
 	case AUTOMATHA:
-		automatha_print_info(_a, stdout);
-		g = automatha_to_grammar(_a);
-
-		if(g == NULL)
-			return;
-
-		grammar_print(g, stdout);
 
 		break;
 	}

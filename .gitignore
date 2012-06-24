@@ -1,5 +1,8 @@
 .DS_Store
 target
+conversor
+Debug
+.settings
 salida
 src/lex.gen.c
 .project

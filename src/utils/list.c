@@ -29,6 +29,23 @@ struct list {
 };
 
 
+static void _list_reverse(node n, list l2) {
+	if (n->next != NULL) {
+		_list_reverse(n->next, l2);
+	}
+	list_add(l2, n->data);
+}
+
+list list_reverse(list l) {
+	if (l->size == 0) {
+		return list_init();
+	} else {
+		list l2 = list_init();
+		_list_reverse(l->header, l2);
+		return l2;
+	}
+}
+
 // Inits the list
 list list_init() {
 	list ret = (list) malloc(sizeof(struct list));

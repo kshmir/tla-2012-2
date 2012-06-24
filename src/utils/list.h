@@ -41,6 +41,9 @@
 // So BEWARE that any call to list is a pointer by itself.
 typedef struct list * list;
 
+
+list list_reverse(list l);
+
 // Inits the list
 list list_init();
 

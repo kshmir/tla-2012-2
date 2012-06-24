@@ -16,6 +16,13 @@
 
 #define BUFF_SIZE 256
 
+
+cstring cstring_from_char(char c) {
+	cstring _c = cstring_init(1);
+	_c[0] = c;
+	return _c;
+}
+
 cstring cstring_copy(cstring s){
 	cstring ret = cstring_init(strlen(s));
 	int i = 0;

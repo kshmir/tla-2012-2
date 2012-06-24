@@ -4,6 +4,7 @@
 #include "../utils/map.h"
 #include "../utils/tree.h"
 #include "../utils/cstring.h"
+#include "../utils/queue.h"
 #include "grammar.h"
 
 struct grammar {
@@ -57,8 +58,8 @@ static int print_is_valid(grammar g) {
 static int print_is_regular(grammar g) {
 	int reg = grammar_is_regular(g);
 	reg ? printf("La gramatica es regular %s\n",
-			reg == RIGHT ? "derecha" : "izquierda") : printf(
-			"La gramatica no es regular\n");
+					reg == RIGHT ? "derecha" : "izquierda") :
+			printf("La gramatica no es regular\n");
 	return reg;
 }
 
@@ -125,17 +126,18 @@ int grammar_can_become_regular(grammar g, int print) {
 				}
 			} else {
 				if (len == 2) {
-					if (is_non_terminal(g, prod_value[0]) && is_terminal_token(g, prod_value[1]))
+					if (is_non_terminal(g, prod_value[0])
+							&& is_terminal_token(g, prod_value[1]))
 						right = false;
-					else if (prod_value[0] != '\\' && is_non_terminal(g,
-							prod_value[1]) && is_terminal_token(g, prod_value[0])) {
+					else if (prod_value[0] != '\\'
+							&& is_non_terminal(g, prod_value[1])
+							&& is_terminal_token(g, prod_value[0])) {
 						left = false;
 					}
 				}
 				if (!left && !right) {
 					if (print)
-						fprintf(
-								stdout,
+						fprintf(stdout,
 								"La gramatica tiene simbolos no terminales a derecha e izquierda de las producciones\n");
 					return false;
 				}
@@ -194,12 +196,6 @@ int check_terminals(grammar g) {
 
 int grammar_is_LL(grammar g) {
 
-	int reg = grammar_is_regular(g);
-	if (reg == LEFT || reg == NULL) {
-		return false;
-	}
-
-
 	map m = grammar_get_productions(g);
 	foreach(cstring, prod_key, map_keys(m)) {
 		if (cstring_len(prod_key) > 1)
@@ -207,17 +203,14 @@ int grammar_is_LL(grammar g) {
 		foreach(cstring, prod_value, ((production)map_get(m, prod_key))->tokens)
 		{
 			if (cstring_len(prod_value) > 2) {
-				if (is_terminal_token(prod_value[0])) {
-					return false;
-				}
 				int i = 0;
 				for (i = 0; i < cstring_len(prod_value); ++i) {
-					if (is_non_terminal(prod_value[i]) && i > 0) {
+					if (is_terminal_token(g, prod_value[i]) && i > 0) {
+						printf("JA2 %c", prod_value[i]);
 						return false;
 					}
 				}
 			}
-			return false;
 		}
 	}
 	return true;
@@ -237,42 +230,11 @@ int grammar_is_regular(grammar g) {
 			if (cstring_len(prod_value) > 2)
 				return false;
 			if (cstring_len(prod_value) == 2) {
-				if (is_non_terminal(g, prod_value[0]) && is_terminal_token(g, prod_value[1]))
+				if (is_non_terminal(g, prod_value[0])
+						&& is_terminal_token(g, prod_value[1]))
 					right = false;
-				else if (is_non_terminal(g, prod_value[1]) && is_terminal_token(g, prod_value[0]))
-					left = false;
-				else if (is_terminal_token(g, prod_value[0])
-						&& is_terminal_token(g, prod_value[1])) {
-					return false;
-				}
-			}
-			if (!left && !right)
-				return false;
-		}
-	}
-	if (right)
-		return RIGHT;
-
-	if (left)
-		return LEFT;
-
-	return false;
-}
-
-int grammar_is_regular(grammar g) {
-	int right = true, left = true;
-	map m = grammar_get_productions(g);
-	foreach(cstring, prod_key, map_keys(m)) {
-		if (cstring_len(prod_key) > 1)
-			return false;
-		foreach(cstring, prod_value, ((production)map_get(m, prod_key))->tokens)
-		{
-			if (cstring_len(prod_value) > 2)
-				return false;
-			if (cstring_len(prod_value) == 2) {
-				if (is_non_terminal(g, prod_value[0]) && is_terminal_token(g, prod_value[1]))
-					right = false;
-				else if (is_non_terminal(g, prod_value[1]) && is_terminal_token(g, prod_value[0]))
+				else if (is_non_terminal(g, prod_value[1])
+						&& is_terminal_token(g, prod_value[0]))
 					left = false;
 				else if (is_terminal_token(g, prod_value[0])
 						&& is_terminal_token(g, prod_value[1])) {
@@ -439,8 +401,6 @@ production production_from_string(cstring string) {
 	// "X|Y|Z"
 	cstring productions_raw = list_get(parse, 1);
 
-
-
 	// Lista de {X, Y, Z}
 	list productions = cstring_split_list(productions_raw, "|");
 
@@ -531,8 +491,6 @@ static int is_generated(char c) {
 static int is_generated_terminal(cstring token, int mode) {
 	int i = 0;
 	int len = cstring_len(token);
-
-
 
 	if (mode == LEFT) {
 		if (len >= 1) {
@@ -726,8 +684,8 @@ static grammar grammar_to_right_form(grammar from, grammar to) {
 			{
 				if (cstring_len(token) == 2) {
 					q[0] = token[1];
-					if (tree_get(lambdable_tokens, q) != NULL && tree_get(
-							lambdable_tokens, prod->start) != NULL) {
+					if (tree_get(lambdable_tokens, q) != NULL
+							&& tree_get(lambdable_tokens, prod->start) != NULL) {
 						production _p = map_get(to->p, q);
 						cstring new_token = cstring_init(1);
 						new_token[0] = token[0];
@@ -775,8 +733,8 @@ void grammar_remove_unreachable(grammar g) {
 				foreach(cstring, token, prod->tokens)
 				{
 					for (i = 0; i < cstring_len(token); i++) {
-						if (is_non_terminal(g, token[i]) && !list_has(l,
-								token[i])) {
+						if (is_non_terminal(g, token[i])
+								&& !list_has(l, token[i])) {
 							changed = true;
 							list_add(l, &token[i]);
 						}
@@ -946,12 +904,128 @@ automatha grammar_to_automatha(grammar g) {
 	return a;
 }
 
+tree production_firsts(grammar g, production p) {
+	tree l = tree_init(cstring_comparer);
+	foreach(cstring, token, p->tokens) {
+		int len = cstring_len(token);
+		if (len > 0 && is_terminal_token(g, token[0])) {
+			cstring c = cstring_init(1);
+			c[0] = token[0];
+			tree_add(l, c);
+		}
+	}
+	return l;
+}
+
+map grammar_nexts(grammar g, map firsts) {
+	map answer = map_init(cstring_comparer, NULL);
+
+	struct sharing {
+		cstring from;
+		cstring to;
+	};
+
+	// Para nexts que son compartidos
+	list shared_nexts = list_init();
+	// Cola de nexts a procesar
+	queue q = queue_init();
+	queue_poll(q, g->s);
+
+	map_set(answer, g->s, tree_init(cstring_comparer));
+	tree_add((tree) map_get(answer, g->s), cstring_copy("$"));
+	do {
+		cstring productionStart = queue_peek(q);
+
+		foreach(cstring, token,
+				((production)map_get(g->p, productionStart))->tokens) {
+			int i = 1;
+			for (i = 1; i < cstring_len(token); ++i) {
+				if (i == cstring_len(token) - 1) {
+					// Add follows of the production start to token[i]'s follows
+					struct sharing * share = malloc(sizeof(struct sharing));
+					share->from = cstring_from_char(productionStart[0]);
+					share->to = cstring_from_char(token[i]);
 
 
+					list_add(shared_nexts, share);
+				} else {
+					// Add the firsts of the next tokens to the one we have in i
+					if (map_get(firsts, cstring_from_char(token[i + 1])) != NULL) {
+						list values = tree_to_list(
+								map_get(firsts,
+										cstring_from_char(token[i + 1])));
+						cstring prod = cstring_from_char(token[i]);
+						{
+							if (map_get(answer, prod) == NULL) {
+								map_set(answer, prod,
+										tree_init(cstring_comparer));
+							}
+							tree t = map_get(answer, prod);
+							foreach(cstring, val, values)
+							{
+								tree_add(t, val);
+							}
+						}
+						queue_poll(q, prod);
+					}
+				}
+			}
+		}
+		queue_pull(q);
+	} while (!queue_empty(q));
 
-cstring make_asdr(grammar g) {
+	{
+		list r_shared_nexts = list_reverse(shared_nexts);
+		foreach(struct sharing *, share, r_shared_nexts) {
+			{
+				cstring from = (share->from);
+				cstring to = (share->to);
+				if (map_get(answer, to) == NULL) {
+					map_set(answer, to, tree_init(cstring_comparer));
+				}
+				if (map_get(answer, from) == NULL) {
+					map_set(answer, from, tree_init(cstring_comparer));
+				}
+				tree to_tree = map_get(answer, to);
+				foreach(cstring, token, tree_to_list(map_get(answer, from)))
+				{
+					tree_add(to_tree, token);
+				}
+			}
+		}
+		list_free(r_shared_nexts);
+		list_free(shared_nexts);
+	}
+
+	return answer;
+}
+
+map grammar_firsts(grammar g) {
+	map answer = map_init(cstring_comparer, NULL);
+	foreach(production, p, map_values(g->p)) {
+		map_set(answer, p->start, production_firsts(g, p));
+	}
+	return answer;
+}
+
+cstring grammar_make_asdr(grammar g) {
 	if (grammar_is_LL(g)) {
 		cstring output_string = cstring_init(0);
+
+		map firsts = grammar_firsts(g);
+		map follows = grammar_nexts(g, firsts);
+
+		foreach(cstring, t, map_keys(follows))
+		{
+			printf("%s: ", t);
+			{
+				foreach(cstring, cs, tree_to_list(map_get(follows, t)))
+				{
+					printf("%s ", cs);
+				}
+			}
+			printf("\n");
+		}
 		// Calcular siguientes y primeros de g
 
 		// Armar matriz en base a los terminales y no terminales (Armar ADT)

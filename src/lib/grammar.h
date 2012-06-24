@@ -73,4 +73,6 @@ cstring production_get_start(production p);
 
 automatha grammar_to_automatha(grammar g);
 
+cstring grammar_make_asdr(grammar g);
+
 #endif
