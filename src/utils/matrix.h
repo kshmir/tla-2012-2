@@ -26,6 +26,8 @@ int matrix_remove(matrix m, int Xindex, int Yindex);
 void matrix_free(matrix m);
 
 int matrix_Xsize(matrix m);
+
+
 int matrix_Ysize(matrix m);
 
 #endif

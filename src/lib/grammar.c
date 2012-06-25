@@ -5,6 +5,7 @@
 #include "../utils/tree.h"
 #include "../utils/cstring.h"
 #include "../utils/queue.h"
+#include "../utils/matrix.h"
 #include "grammar.h"
 
 struct grammar {
@@ -203,14 +204,17 @@ int grammar_is_LL(grammar g) {
 		foreach(cstring, prod_value, ((production)map_get(m, prod_key))->tokens)
 		{
 			if (cstring_len(prod_value) > 2) {
-				int i = 0;
-				for (i = 0; i < cstring_len(prod_value); ++i) {
-					if (is_terminal_token(g, prod_value[i]) && i > 0) {
-						printf("JA2 %c", prod_value[i]);
-						return false;
-					}
+				if (is_non_terminal(g, prod_value[0])) {
+					return false;
 				}
-			}
+				if (is_terminal_token(g, prod_value[1])) {
+					return true;
+				}
+			} else {
+				if (is_non_terminal(g, prod_value[0])) {
+					return false;
+				}
+ 			}
 		}
 	}
 	return true;
@@ -849,7 +853,6 @@ automatha grammar_to_automatha(grammar g) {
 	if (regularity == LEFT) {
 		foreachh(production, _p, productions) {
 			grammar_split_non_terms(normalized, _p, productions, LEFT);
-
 		}
 
 		lefted = grammar_to_right_form(normalized, lefted);
@@ -909,6 +912,7 @@ tree production_firsts(grammar g, production p) {
 	foreach(cstring, token, p->tokens) {
 		int len = cstring_len(token);
 		if (len > 0 && is_terminal_token(g, token[0])) {
+
 			cstring c = cstring_init(1);
 			c[0] = token[0];
 			tree_add(l, c);
@@ -940,7 +944,7 @@ map grammar_nexts(grammar g, map firsts) {
 				((production)map_get(g->p, productionStart))->tokens) {
 			int i = 1;
 			for (i = 1; i < cstring_len(token); ++i) {
-				if (i == cstring_len(token) - 1) {
+				if (i == cstring_len(token) - 1 && is_non_terminal(g, token[i])) {
 					// Add follows of the production start to token[i]'s follows
 					struct sharing * share = malloc(sizeof(struct sharing));
 					share->from = cstring_from_char(productionStart[0]);
@@ -948,7 +952,7 @@ map grammar_nexts(grammar g, map firsts) {
 
 
 					list_add(shared_nexts, share);
-				} else {
+				} else if (i < cstring_len(token) - 1){
 					// Add the firsts of the next tokens to the one we have in i
 					if (map_get(firsts, cstring_from_char(token[i + 1])) != NULL) {
 						list values = tree_to_list(
@@ -967,6 +971,16 @@ map grammar_nexts(grammar g, map firsts) {
 							}
 						}
 						queue_poll(q, prod);
+					} else {
+						cstring prod = cstring_from_char(token[i]);
+						{
+							if (map_get(answer, prod) == NULL) {
+								map_set(answer, prod,
+										tree_init(cstring_comparer));
+							}
+							tree t = map_get(answer, prod);
+							tree_add(t, cstring_from_char(token[i + 1]));
+						}
 					}
 				}
 			}
@@ -1008,31 +1022,212 @@ map grammar_firsts(grammar g) {
 	return answer;
 }
 
+struct keypair {
+	cstring key;
+	cstring key2;
+} typedef * keypair;
+
+keypair make_keypair(cstring key, cstring key2) {
+	keypair pair = malloc(sizeof(struct keypair));
+	pair->key = key;
+	pair->key2 = key2;
+
+	return pair;
+}
+
+
+int keypair_comparer(keypair k1, keypair k2) {
+	if (cstring_compare(k1->key, k2->key) == 0)  {
+		return cstring_compare(k1->key2, k2->key2);
+	} else {
+		return cstring_compare(k1->key, k2->key);
+	}
+}
+
+tree grammar_anulables(grammar g) {
+	tree anulables = tree_init(cstring_comparer);
+	foreach(production, p, map_values(g->p)) {{
+		foreach(cstring, token, p->tokens) {
+			if (cstring_compare(token, "\\") == 0) {
+				tree_add(anulables, p->start);
+			}
+		}
+	}}
+	return anulables;
+}
+
+map grammar_map(grammar g, map firsts, map follows, tree anulables) {
+	map sds = map_init((comparer) keypair_comparer, NULL);
+	foreach(cstring, pkey, map_keys(g->p)) {{
+		production prod = map_get(g->p, pkey);
+		tree firsts_for_prod = map_get(firsts, pkey);
+		foreach(cstring, first, tree_to_list(firsts_for_prod)) {{
+
+
+			keypair key = make_keypair(pkey, first);
+
+			cstring token = NULL;
+
+			foreach(cstring, tok, prod->tokens) {
+				if (tok[0] == first[0]) {
+					token = tok;
+					break;
+				}
+			}
+
+			if (token == NULL) {
+				continue;
+			}
+
+			// Setea para un dado para de VN/VT, la producción a seguir.
+			// En base al conjunto de primeros
+			map_set(sds, key, token);
+		}}
+
+		if (tree_get(anulables, pkey) != NULL) {
+			tree follows_for_prod = map_get(follows, pkey);
+			foreach(cstring, follow, tree_to_list(follows_for_prod)) {{
+				keypair key = make_keypair(pkey, follow);
+
+				cstring tok = cstring_copy("\\");
+				// Setea para un dado para de VN/VT, la producción a seguir.
+				// En base al conjunto de primeros
+				if (map_get(sds, key) == NULL) {
+					map_set(sds, key, tok);
+				}
+			}}
+		}
+
+	}}
+
+	return sds;
+}
+
+
 cstring grammar_make_asdr(grammar g) {
 	if (grammar_is_LL(g)) {
 		cstring output_string = cstring_init(0);
 
+		map firsts_productions = map_init(cstring_comparer, NULL);
+
+		tree anulables = grammar_anulables(g);
 		map firsts = grammar_firsts(g);
 		map follows = grammar_nexts(g, firsts);
+		map mapped = grammar_map(g, firsts, follows, anulables);
 
-		foreach(cstring, t, map_keys(follows))
+		list cols = list_copy(g->vt, NULL);
+		list rows = list_copy(g->vn, NULL);
+
+		list_add(cols, "$");
+
+		struct keypair _kp;
+		keypair kp = &_kp;
+
+		char buffer[8096 * 10];
+		char * if_prototype = "if (**str == '%s' && len > 0) { %s return;}\n";
+		char * function_sub_prototype =  "void %s(char ** str, int len);\n";
+		char * function_prototype = "void %s(char ** str, int len) {\
+				%s\
+		}";
+
+		char * file_prototype = "#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n %s %s %s";
+		char * main_prototype = "static int do_print = 0;\nstatic int error = 0;\n\nint main(int argc, char ** args) {\n\tif (argc \x3C 2) {\n\t\tprintf(\"Debe ingresar la cadena a analizar!\\n\");\n\t\treturn 1;\n\t}\n\tchar buffer[8096];\n\tint i = 0;\n\tint len = strlen(args[1]);\n\n\tfor (; i \x3C len; i++) {\n\t\tbuffer[i] = args[1][i];\n\t}\n\tchar * oldbuf = buffer;\n\tchar * buf = buffer;\n\t%s(&buf, len);\n\tif (*buf == 0 && !error) {\n\t\tprintf(\"Cadena aceptada!\\n\");\n\t\tdo_print = 1;\n\t\tbuf = buffer;\n\t\t%s(&buf, len);\n\t} else {\n\t\tprintf(\"Cadena no aceptada!\");\n\t}\n\n}";
+
+
+		cstring sub_functions = cstring_init(0);
+		cstring main = cstring_init(0);
+		cstring functions = cstring_init(0);
+
+		sprintf(buffer, main_prototype, g->s, g->s);
+
+		main = cstring_write(main, buffer);
+
 		{
-			printf("%s: ", t);
-			{
-				foreach(cstring, cs, tree_to_list(map_get(follows, t)))
-				{
-					printf("%s ", cs);
+			foreach(cstring, prod, rows) {{
+				cstring function_body = cstring_init(0);
+
+
+
+				int lambdad = 0;
+				foreach(cstring, token, cols) {
+					cstring function_content = cstring_init(0);
+					kp->key = prod;
+					kp->key2 = token;
+					if (map_get(mapped, kp) != NULL) {
+						int i = 1;
+						cstring tok = map_get(mapped, kp);
+
+						if (tok[0] != '\\') {
+							function_content = cstring_write(function_content, "(*str)++;");
+							function_content = cstring_write(function_content, "if(do_print) { printf(\"");
+							function_content = cstring_write(function_content, prod);
+							function_content = cstring_write(function_content, "->");
+							function_content = cstring_write(function_content, tok);
+							function_content = cstring_write(function_content, "\\n\"); }");
+
+							int terminals = 0;
+
+							for (i = 0; i < cstring_len(tok); ++i) {
+								if (is_terminal_token(g, tok[i])) {
+									terminals++;
+								}
+							}
+
+							for (i = 1; i < cstring_len(tok); ++i) {
+								if (is_non_terminal(g, tok[i])) {
+									function_content = cstring_write(function_content, cstring_from_char(tok[i]));
+									function_content = cstring_write(function_content, "(str, len - ");
+									function_content = cstring_write(function_content, cstring_fromInt(terminals));
+									function_content = cstring_write(function_content, " );");
+								} else {
+									function_content = cstring_write(function_content, "if (**str == '");
+									function_content = cstring_write(function_content, cstring_from_char(tok[i]));
+									function_content = cstring_write(function_content, "') { (*str)++; } else { error = 1; }");
+								}
+							}
+
+							sprintf(buffer, if_prototype, cstring_from_char(tok[0]), function_content);
+
+						} else {
+							lambdad = 1;
+
+							cstring lambda = cstring_from_char(tok[0]);
+							lambda = cstring_write(lambda, lambda);
+
+							function_content = cstring_write(function_content, "if(do_print) { printf(\"");
+							function_content = cstring_write(function_content, prod);
+							function_content = cstring_write(function_content, "->");
+							function_content = cstring_write(function_content, tok);
+							function_content = cstring_write(function_content, "\\\\n\"); } return;");
+
+							sprintf(buffer,"%s", function_content);
+
+						}
+
+						function_body = cstring_write(function_body, buffer);
+					}
+
 				}
-			}
-			printf("\n");
+
+				if (!lambdad) {
+					function_body = cstring_write(function_body, "error = 1;");
+				}
+				sprintf(buffer, function_prototype, prod, function_body);
+
+				functions = cstring_write(functions, buffer);
+
+				sprintf(buffer, function_sub_prototype, prod);
+
+				sub_functions = cstring_write(sub_functions, buffer);
+			}}
 		}
-		// Calcular siguientes y primeros de g
 
-		// Armar matriz en base a los terminales y no terminales (Armar ADT)
+		sprintf(buffer, file_prototype, sub_functions, main, functions);
 
-		// Armar funciones en base a la matriz. (Recorrerla)
+		output_string = cstring_write(output_string, buffer);
 
-		// Devolver eso.
+
+		return output_string;
 	} else {
 		printf("La gramática recibida es inválida");
 		return NULL;

@@ -260,6 +260,12 @@ void cstring_free(cstring s) {
 	free(s);
 }
 
+void cstring_to_file(cstring cs, cstring path)	{
+	FILE * fd = fopen(path, "w+");
+	fwrite(cs, 1, strlen(cs), fd);
+	fclose(fd);
+}
+
 cstring cstring_from_file(cstring path)	{
 	int fd = open(path, O_RDONLY);
 	if( fd < 0 ){

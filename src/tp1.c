@@ -20,16 +20,16 @@ FILE *fmemopen(void *buf, size_t size, const char *opentype) {
 char buffer[BUFFER_SIZE];
 
 void tp_run(int mode) {
-	FILE * file = stdout;
-
-	FILE * dotfile = fopen(".tmp", "w+");
-
 	grammar g;
 	automatha a;
+	cstring output = NULL;
 	switch (mode) {
 	case GRAMMAR:
-//		grammar_print_info(_g);
-		grammar_make_asdr(_g);
+		 output = grammar_make_asdr(_g);
+
+		if (output != NULL) {
+			cstring_to_file(output, "ASDR.c");
+		}
 		break;
 	case AUTOMATHA:
 

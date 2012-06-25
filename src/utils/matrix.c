@@ -28,8 +28,8 @@ matrix matrix_init(int x, int y) {
 	ret->Xsize = x;
 	ret->Ysize = y;
 	ret->data = list_init();
-
-	for(int i=0;i<x;i++){
+	int i =0;
+	for(i=0;i<x;i++){
 
 		list_add(ret->data,list_init());
 	}
@@ -84,8 +84,8 @@ int matrix_remove(matrix m, int Xindex, int Yindex) {
 // Free's up the matrix
 void matrix_free(matrix m) {
 
-
-	for(int i=0;i<m->Xsize;i++){
+	int i =0;
+	for(i=0;i<m->Xsize;i++){
 
 			list to_free=list_get(m->data,i);
 			list_free(to_free);

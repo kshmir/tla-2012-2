@@ -1,7 +1,7 @@
 tp1 : tp
 	gcc -g -m32 -o  conversor target/tp.o target/lex.o \
 	 target/cstring.o target/map.o target/list.o target/includes.o \
-	 target/tree.o target/grammar.o target/automatha.o target/queue.o
+	 target/tree.o target/grammar.o target/automatha.o target/queue.o target/matrix.o
 tp : clean
 	mkdir target
 	flex --outfile=src/lex.gen.c src/parser.l
@@ -16,10 +16,11 @@ tp : clean
 	gcc -g -m32 -o target/includes.o -c src/includes.c 
 	gcc -g -m32 -o target/tree.o -c src/utils/tree.c
 	gcc -g -m32 -o target/queue.o -c src/utils/queue.c
+	gcc -g -m32 -o target/matrix.o -c src/utils/matrix.c
 clean:
 	rm -rf target
 	rm -f src/lex.gen.c
 all : tp
 	gcc -g -m32 -o conversor target/lex.o target/tp.o target/cstring.o \
 	target/map.o target/list.o target/includes.o target/tree.o \
-	target/grammar.o target/automatha.o target/queue.o
+	target/grammar.o target/automatha.o target/queue.o target/matrix.o
